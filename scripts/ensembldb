@@ -16,10 +16,12 @@ def cli():
     type=click.Path(),
     required=True,
     help='Ensembl database local path.')
-def init_db():
-    click.secho('init database')
-    if 'ENSEMBL_DB_PATH' not in os.environ:
-        init.setup_db_env()
+def init_db(db_path):
+    click.secho('#init database')
+    click.secho('#check ensembldb database...')
+    init.setup_db_sqlit(db_path)
+    click.secho('#check environment variable...')
+    init.setup_db_env(db_path)
 
 
 @cli.command('show')

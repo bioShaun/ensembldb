@@ -21,8 +21,10 @@ setup(
     license='MIT',
     packages=find_packages(),
     include_package_data=True,
-    scripts=['scripts/mrna'],
-    install_requires=[],
+    scripts=['scripts/ensembldb'],
+    install_requires=[
+        'click',
+    ],
 )
 
 
