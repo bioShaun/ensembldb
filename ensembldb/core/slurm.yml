@@ -1,0 +1,15 @@
+DEFAULT: &default
+  account: lxgui
+  partition: lc
+  n: 1
+  N: 1
+  x: OM000,OM001,OM013
+
+module_test:
+  TestRun:
+    <<: *default
+    c: 2
+
+
+
+

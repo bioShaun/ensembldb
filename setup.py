@@ -24,6 +24,8 @@ setup(
     scripts=['scripts/ensembldb'],
     install_requires=[
         'click',
+        'luigi',
+        'yaml'
     ],
 )
 
