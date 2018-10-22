@@ -1,0 +1,9 @@
+module_dir:
+  module_test:
+    slurm_scripts: test/slurm_scripts
+    slurm_logs: test/slurm_logs
+    logs: test/logs
+
+module_cmd:
+  module_test:
+    TestRun: 'echo "hello world."'
