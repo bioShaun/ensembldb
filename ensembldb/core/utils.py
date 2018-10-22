@@ -72,6 +72,8 @@ class SimpleTask(luigi.Task):
             log_out = _process.std_err
         else:
             check_bash_var = True
+            _run_cmd_list = [each.strip() for each in _run_cmd.split('|')]
+            _run_cmd = '\n'.join(_run_cmd_list)
             if self.venv:
                 check_bash_var = False
                 _run_cmd = '''\
