@@ -2,6 +2,7 @@ from pathlib import Path
 import shutil
 import os
 import sqlite3
+import sys
 
 
 CFG_TEMPLATE = '''
@@ -23,8 +24,10 @@ SQLIT_TABLE_COL = [
     'update_time'
 ]
 
-
-HOME_DIR = Path().home()
+if sys.version_info >= (3, 5):
+    HOME_DIR = Path().home()
+else:
+    HOME_DIR = Path(os.path.expanduser('~'))
 
 
 class EnsSQL:
@@ -56,7 +59,7 @@ version text, kingdom text, user text, update_time timestamp)'''
 
 def backup_file(file_path):
     file_path = Path(file_path)
-    back_file = file_path.with_suffix(f'{file_path.suffix}.backup')
+    back_file = file_path.with_suffix('{}.backup'.format(file_path.suffix))
     shutil.copyfile(file_path, back_file)
 
 
@@ -92,6 +95,6 @@ def setup_db_env(variable_path):
     if variable_name not in os.environ:
         print('#You need to refresh your environment variables')
         print('#Please run above command before next step:')
-        print(f'source {shell_cfg_file}')
+        print('source {}'.format(shell_cfg_file))
     else:
         print('#environment variable setted.')

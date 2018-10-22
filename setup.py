@@ -6,10 +6,10 @@ from setuptools import setup, find_packages
 version = '0.1dev'
 
 
-msg = f'''------------------------------
-Installing RNAseq version {version}
+msg = '''------------------------------
+Installing ensembldb version {}
 ------------------------------
-'''
+'''.format(version)
 print(msg)
 
 setup(
@@ -29,7 +29,7 @@ setup(
 
 
 msg = '''------------------------------
-RNAseq installation complete!
+ensembldb installation complete!
 ------------------------------
 '''
 print(msg)
