@@ -11,10 +11,12 @@ module_test:
     c: 2
 
 module_mkidx:
-  MkindexExtr:
+  MkindexKallisto:
     <<: *default
-    c: 2
-
-
-
-
+    c: 4
+  MkindexStar:
+    <<: *default
+    c: 16
+  Mkindex:
+    <<: *default
+    c: 1

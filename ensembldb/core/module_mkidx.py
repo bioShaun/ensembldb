@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 import luigi
-from luigi.util import requires
+from luigi.util import requires, inherits
 from ensembldb.core.utils import SimpleTask, Prepare
+from ensembldb.core import config
 from pathlib import PurePath
 import os
 
@@ -18,26 +19,49 @@ class Pubvar:
 class MkindexPrepare(Prepare, Pubvar):
     genome_fa = luigi.Parameter()
     genome_gtf = luigi.Parameter()
+    genome_exon_fa = luigi.Parameter()
 
 
 @requires(MkindexPrepare)
-class MkindexExtr(SimpleTask, Pubvar):
+class MkindexKallisto(SimpleTask, Pubvar):
 
     def treat_parameter(self):
-        self.genome_fa = PurePath(self.genome_fa)
-        self.genome_exon_fa = self.genome_fa.with_suffix('.exon.fa')
-        self.genome_cds_fa = self.genome_fa.with_suffix('.cds.fa')
-        self.genome_pep_fa = self.genome_fa.with_suffix('.pep.fa')
-
-
-@requires(MkindexPrepare)
-class MkindexKallisto(MkindexExtr):
-    pass
+        index_dir = os.path.join(self.proj_dir,
+                                 config.module_dir[self._module]['main'])
+        tr_name = os.path.basename(self.genome_exon_fa)
+        self.index_path = os.path.join(index_dir,
+                                       '{}.kallisto_idx'.format(tr_name))
 
 
 @requires(MkindexPrepare)
 class MkindexStar(SimpleTask, Pubvar):
-    pass
+
+    def treat_parameter(self):
+        self.index_path = os.path.join(self.proj_dir,
+                                       config.module_dir[self._module]['star'])
+
+
+@inherits(MkindexPrepare)
+class Mkindex(SimpleTask, Pubvar):
+
+    index = luigi.Parameter(default='kallisto,star')
+
+    def requires(self):
+        INDEX_MD_DICT = {
+            'kallisto': MkindexKallisto,
+            'star': MkindexStar
+        }
+
+        index_list = self.index.split(',')
+        index_jobs = []
+        for each_index in index_list:
+            index_jobs.append(
+                INDEX_MD_DICT[each_index](genome_fa=self.genome_fa,
+                                          genome_gtf=self.genome_gtf,
+                                          genome_exon_fa=self.genome_exon_fa,
+                                          proj_dir=self.proj_dir,
+                                          slurm=self.slurm))
+        return index_jobs
 
 
 if __name__ == '__main__':

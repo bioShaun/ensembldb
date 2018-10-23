@@ -16,9 +16,12 @@ module_cmd:
   module_test:
     TestRun: 'echo "hello world."'
   module_mkidx:
-    MkindexExtr: 'gffread {t.genome_gtf} -g {t.genome_fa} -w {t.genome_exon_fa}|
-                  gffread {t.genome_gtf} -g {t.genome_fa} -x {t.genome_cds_fa}|
-                  gffread {t.genome_gtf} -g {t.genome_fa} -y {t.genome_pep_fa}'
-  
-
-
+    MkindexKallisto: 'kallisto index -i {t.index_path} {t.genome_exon_fa}'
+    MkindexStar: 'STAR --runThreadN 8
+                  --runMode genomeGenerate 
+                  --genomeDir {t.index_path}
+                  --genomeFastaFiles {t.genome_fa}
+                  --sjdbGTFfile {t.genome_gtf}
+                  --outTmpDir {t.index_path}/tmp
+                  --sjdbOverhang 149'
+    Mkindex: 'echo "Mkindex finished."'
