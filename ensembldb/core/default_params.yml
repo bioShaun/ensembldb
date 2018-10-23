@@ -1,9 +1,27 @@
 module_dir:
   module_test:
+    main: test/
     slurm_scripts: test/slurm_scripts
     slurm_logs: test/slurm_logs
     logs: test/logs
+  module_mkidx:
+    slurm_scripts: index/slurm_scripts
+    slurm_logs: index/slurm_logs
+    logs: index/logs
+    main: index/
+    star: index/star_index
+    
 
 module_cmd:
   module_test:
     TestRun: 'echo "hello world."'
+  module_mkidx:
+    MkindexKallisto: 'kallisto index -i {t.index_path} {t.genome_exon_fa}'
+    MkindexStar: 'STAR --runThreadN 8
+                  --runMode genomeGenerate 
+                  --genomeDir {t.index_path}
+                  --genomeFastaFiles {t.genome_fa}
+                  --sjdbGTFfile {t.genome_gtf}
+                  --outTmpDir {t.index_path}/tmp
+                  --sjdbOverhang 149'
+    Mkindex: 'echo "Mkindex finished."'

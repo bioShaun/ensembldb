@@ -10,6 +10,13 @@ module_test:
     <<: *default
     c: 2
 
-
-
-
+module_mkidx:
+  MkindexKallisto:
+    <<: *default
+    c: 4
+  MkindexStar:
+    <<: *default
+    c: 16
+  Mkindex:
+    <<: *default
+    c: 1
