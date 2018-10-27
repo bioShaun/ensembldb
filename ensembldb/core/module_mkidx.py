@@ -4,7 +4,6 @@ import luigi
 from luigi.util import requires, inherits
 from ensembldb.core.utils import SimpleTask, Prepare
 from ensembldb.core import config
-from pathlib import PurePath
 import os
 
 
