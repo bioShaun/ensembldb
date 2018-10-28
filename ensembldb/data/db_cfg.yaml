@@ -1,0 +1,6 @@
+EnsemblPlants:
+  host: ftp.ensemblgenomes.org
+  start_path: /pub/plants/
+Ensembl:
+  host: ftp.ensembl.org
+  start_path: /pub/

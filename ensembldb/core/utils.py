@@ -69,7 +69,8 @@ class SimpleTask(luigi.Task):
             t=self)
         if not self.slurm:
             _process = envoy.run(_run_cmd)
-            log_out = _process.std_err
+            log_out = "cmd:\n{cmd}\n\nstd_err:\n{se}".format(
+                cmd=_run_cmd, se=_process.std_err)
         else:
             check_bash_var = True
             _run_cmd_list = [each.strip() for each in _run_cmd.split('|')]

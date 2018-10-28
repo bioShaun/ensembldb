@@ -1,0 +1,44 @@
+module_dir:
+  module_test:
+    main: test/
+    slurm_scripts: test/slurm_scripts
+    slurm_logs: test/slurm_logs
+    logs: test/logs
+  module_mkidx:
+    slurm_scripts: index/slurm_scripts
+    slurm_logs: index/slurm_logs
+    logs: index/logs
+    main: index/
+    star: index/star_index
+  module_dlgenome:
+    slurm_scripts: slurm_scripts
+    slurm_logs: slurm_logs
+    logs: logs
+    annotation: annotation
+    download: download
+    
+
+module_cmd:
+  module_test:
+    TestRun: 'echo "hello world."'
+  module_mkidx:
+    MkindexKallisto: 'kallisto index -i {t.index_path} {t.genome_exon_fa}'
+    MkindexStar: 'STAR --runThreadN 8
+                  --runMode genomeGenerate 
+                  --genomeDir {t.index_path}
+                  --genomeFastaFiles {t.genome_fa}
+                  --sjdbGTFfile {t.genome_gtf}
+                  --outTmpDir {t.index_path}/tmp
+                  --sjdbOverhang 149'
+    Mkindex: 'echo "Mkindex finished."'
+  module_dlgenome:
+    DlGenomeDownload: 'ensembldb_genome_dl
+                       --sp-latin {t.sp_latin}
+                       --version {t.db_version}
+                       --out-dir {t.dl_dir}'
+    DlGenomeFormatdb: 'mkdir -p {t.proj_dir}/{t.anno_dir}/{t.db_version} |
+                       ln -s {t.proj_dir}/{t.download_dir}/{t.genome_fa} {t.proj_dir}/{t.anno_dir}/{t.db_version}/{t.genome_fa} |
+                       ln -s {t.proj_dir}/{t.download_dir}/{t.genome_gtf} {t.proj_dir}/{t.anno_dir}/{t.db_version}/{t.genome_gtf}'
+
+    DlGenomeMetatable: 'ensembldb_metatable gene2tr {t.db_obj.gtf} |
+                        ensembldb_metatable gtf2genelen {t.db_obj.gtf}'

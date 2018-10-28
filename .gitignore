@@ -119,3 +119,6 @@ database.yaml
 # png and xml
 *xml
 *png
+
+# test data
+test_dl
