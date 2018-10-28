@@ -1,0 +1,164 @@
+#!/usr/bin/env python
+
+import asyncio
+import aioftp
+import pathlib
+import fire
+import re
+import pandas as pd
+import gzip
+from collections import namedtuple
+from ensembldb.core import config
+
+
+SEMA = asyncio.Semaphore(5)
+CURRENT_DIR = pathlib.Path().cwd()
+
+
+def get_sp_db_inf(sp_latin):
+    if sp_latin in config.sp_db_df.index:
+        ens_db_name = config.sp_db_df.loc[sp_latin, 'division']
+    else:
+        ens_db_name = 'Ensembl'
+    return ens_db_name, config.ens_db_dict[ens_db_name]
+
+
+def ensembl_file_path(species, g_version, d_version, start_path='/pub/'):
+    base_path = pathlib.PurePath('{start}/{ver}/'.format(
+        ver=d_version, start=start_path
+    ))
+    file_pref = '{sp}.{gv}'.format(
+        sp=species.capitalize(), gv=g_version
+    )
+    cds_file_name = '{pref}.cds.all.fa.gz'.format(
+        pref=file_pref
+    )
+    cds_file = base_path / 'fasta/{sp}/cds/{name}'.format(
+        sp=species, name=cds_file_name
+    )
+    gtf_file_name = '{pref}.{dv}.gtf.gz'.format(
+        pref=file_pref, dv=d_version
+    )
+    gtf_file = base_path / 'gtf/{sp}/{name}'.format(
+        sp=species, name=gtf_file_name
+    )
+    pep_file_name = '{pref}.pep.all.fa.gz'.format(
+        pref=file_pref
+    )
+    pep_file = base_path / 'fasta/{sp}/pep/{name}'.format(
+        sp=species, name=pep_file_name
+    )
+    test_file_name = '{pref}.dna.toplevel.fa.gz.fai'.format(pref=file_pref)
+    test_file = base_path / 'fasta/{sp}/dna_index/{name}'.format(
+        sp=species, name=test_file_name
+    )
+    genome_file_name = '{pref}.dna.toplevel.fa.gz'.format(pref=file_pref)
+    genome_file = base_path / 'fasta/{sp}/dna_index/{name}'.format(
+        sp=species, name=genome_file_name
+    )
+
+    out_dict = {
+        'cds': cds_file,
+        'gtf': gtf_file,
+        'genome': genome_file,
+        'pep': pep_file,
+        'test_file': test_file
+    }
+    return out_dict
+
+
+async def get_inf(host, species, version, info_dict,
+                  db_name='Ensembl', start_path='/pub/'):
+    if version != 'current':
+        version = 'release-{}'.format(version)
+        path = '{start}/{ver}/fasta/{sp}/cds/'.format(
+            ver=version, sp=species, start=start_path
+        )
+    else:
+        if db_name == 'Ensembl':
+            path = '{start}/current_fasta/{sp}/cds/'.format(
+                sp=species, start=start_path
+            )
+        else:
+            path = '{start}/{ver}/fasta/{sp}/cds/'.format(
+                ver=version, sp=species, start=start_path
+            )
+
+    version_inf = namedtuple('version_inf', ['g_version', 'db_version'])
+
+    with (await SEMA):
+        async with aioftp.ClientSession(host) as client:
+            if version == 'current':
+                await client.change_directory(path)
+                path_name = await client.get_current_directory()
+                version = str(path_name).split('/')[2]
+            for path, info in (await client.list(path)):
+                if info['type'] == 'file' and path.suffix == '.gz':
+                    pattern = re.compile('{pref}.(\S+).cds.all.fa.gz'.format(
+                        pref=species.capitalize()
+                    ))
+                    g_version = pattern.match(path.name).groups()[0]
+                    info_dict[species] = version_inf(g_version, version)
+
+
+async def get_file(host, path, out_dir=CURRENT_DIR):
+    with (await SEMA):
+        async with aioftp.ClientSession(host, socket_timeout=30) as client:
+            # get download file stat
+            if await client.exists(path):
+                stat = await client.stat(path)
+                size = int(stat["size"])
+            else:
+                print('{fi} not exists!'.format(fi=path))
+            file_name = pathlib.PurePath(path).name
+            outfile = out_dir / file_name
+            if pathlib.Path(outfile).exists():
+                outfile_stat = pathlib.Path(outfile).stat()
+                outfile_size = outfile_stat.st_size
+            else:
+                outfile_size = 0
+            if outfile_size != size:
+                print('Start downloading {fi}'.format(fi=file_name))
+                file_out = open(outfile, 'ab')
+                async with client.download_stream(
+                        path, offset=outfile_size) as stream:
+                    async for block in stream.iter_by_block():
+                        file_out.write(block)
+                stream.close()
+                file_out.close()
+            print('Finished downloading {fi}.'.format(fi=file_name))
+
+
+def download_ensembl_files(sp_latin, version='current',
+                           out_dir=CURRENT_DIR, test=False,
+                           download_files=['gtf', 'genome']):
+    '''Download sequence & annotation files from ensembl dababase'''
+    db_name, db_inf_dict = get_sp_db_inf(sp_latin)
+    host, start_path = db_inf_dict['host'], db_inf_dict['start_path']
+
+    info_dict = dict()
+    loop = asyncio.get_event_loop()
+    inf_tasks = [
+        get_inf(host, sp_latin, version, info_dict,
+                start_path=start_path, db_name=db_name)]
+    loop.run_until_complete(asyncio.wait(inf_tasks))
+
+    if test:
+        download_files = ['test_file']
+
+    file_list = list()
+    for each_sp in [sp_latin]:
+        each_sp_gv, each_db_v = info_dict[each_sp]
+        each_sp_files = ensembl_file_path(each_sp, each_sp_gv,
+                                          each_db_v, start_path=start_path)
+        for each_file in download_files:
+            file_list.append(each_sp_files[each_file])
+    download_tasks = [
+        get_file(host, each_path) for each_path
+        in file_list]
+    loop.run_until_complete(asyncio.wait(download_tasks))
+    loop.close()
+
+
+if __name__ == '__main__':
+    fire.Fire(download_ensembl_files)
