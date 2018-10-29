@@ -20,3 +20,14 @@ module_mkidx:
   Mkindex:
     <<: *default
     c: 1
+
+module_dlgenome:
+  DlGenomeFormatdb:
+    <<: *default
+    c: 1
+  DlGenomeMetatable:
+    <<: *default
+    c: 1
+  DlGenomeExtSeq:
+    <<: *default
+    c: 2

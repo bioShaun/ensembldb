@@ -1,0 +1,187 @@
+#!/usr/bin/env python
+
+import os
+import asyncio
+import aioftp
+from pathlib import PurePath, Path
+import fire
+import re
+import pandas as pd
+import gzip
+from ensembldb.core import config
+from ensembldb.core import utils
+import sys
+import envoy
+import shutil
+
+SEMA = asyncio.Semaphore(5)
+CURRENT_DIR = Path().cwd()
+
+
+def uncompress_file(gzip_file, out_dir):
+    gzip_file = Path(gzip_file)
+    out_dir = Path(out_dir)
+    if gzip_file.suffix == '.gz':
+        gunzip_file = out_dir / gzip_file.stem
+        if not gunzip_file.exists():
+            with gzip.open(gzip_file, 'rb') as f_in:
+                with open(gunzip_file, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+
+
+# def get_sp_db_inf(sp_latin):
+#     if sp_latin in config.sp_db_df.index:
+#         ens_db_name = config.sp_db_df.loc[sp_latin, 'division']
+#     else:
+#         ens_db_name = 'Ensembl'
+#     return ens_db_name, config.ens_db_dict[ens_db_name]
+
+
+def ensembl_file_path(species, g_version, d_version, start_path='/pub/',
+                      download_files=None):
+    base_path = PurePath('{start}/release-{ver}/'.format(
+        ver=d_version, start=start_path
+    ))
+    file_pref = '{sp}.{gv}'.format(
+        sp=species.capitalize(), gv=g_version
+    )
+    cds_file_name = '{pref}.cds.all.fa.gz'.format(
+        pref=file_pref
+    )
+    cds_file = base_path / 'fasta/{sp}/cds/{name}'.format(
+        sp=species, name=cds_file_name
+    )
+    gtf_file_name = '{pref}.{dv}.gtf.gz'.format(
+        pref=file_pref, dv=d_version
+    )
+    gtf_file = base_path / 'gtf/{sp}/{name}'.format(
+        sp=species, name=gtf_file_name
+    )
+    pep_file_name = '{pref}.pep.all.fa.gz'.format(
+        pref=file_pref
+    )
+    pep_file = base_path / 'fasta/{sp}/pep/{name}'.format(
+        sp=species, name=pep_file_name
+    )
+    test_file_name = '{pref}.dna.toplevel.fa.gz.fai'.format(pref=file_pref)
+    test_file = base_path / 'fasta/{sp}/dna_index/{name}'.format(
+        sp=species, name=test_file_name
+    )
+    genome_file_name = '{pref}.dna.toplevel.fa.gz'.format(pref=file_pref)
+    genome_file = base_path / 'fasta/{sp}/dna_index/{name}'.format(
+        sp=species, name=genome_file_name
+    )
+
+    out_dict = {
+        'cds': cds_file,
+        'genome_gtf': gtf_file,
+        'genome_fa': genome_file,
+        'pep': pep_file,
+        'test_file': test_file
+    }
+
+    if download_files is not None:
+        out_dict = {k: v for k, v in out_dict.items()
+                    if k in download_files}
+
+    return out_dict
+
+
+async def get_inf(host, species, version,
+                  start_path='/pub/'):
+    path = '{start}/release-{ver}/fasta/{sp}/cds/'.format(
+        ver=version, sp=species, start=start_path
+    )
+
+    with (await SEMA):
+        async with aioftp.ClientSession(host) as client:
+            for path, info in (await client.list(path)):
+                if info['type'] == 'file' and path.suffix == '.gz':
+                    pattern = re.compile('{pref}.(\S+).cds.all.fa.gz'.format(
+                        pref=species.capitalize()
+                    ))
+                    g_version = pattern.match(path.name).groups()[0]
+    return g_version
+
+
+async def get_file(host, path, out_dir=CURRENT_DIR):
+    with (await SEMA):
+        async with aioftp.ClientSession(host, socket_timeout=30) as client:
+            # get download file stat
+            if await client.exists(path):
+                stat = await client.stat(path)
+                size = int(stat["size"])
+            else:
+                sys.exit('{fi} not exists!'.format(fi=path))
+            file_name = PurePath(path).name
+            outfile = out_dir / file_name
+            if Path(outfile).exists():
+                outfile_stat = Path(outfile).stat()
+                outfile_size = outfile_stat.st_size
+            else:
+                outfile_size = 0
+            if outfile_size != size:
+                print('Start downloading {fi}'.format(fi=file_name))
+                file_out = open(outfile, 'ab')
+                async with client.download_stream(
+                        path, offset=outfile_size) as stream:
+                    async for block in stream.iter_by_block():
+                        file_out.write(block)
+                stream.close()
+                file_out.close()
+            print('Finished downloading {fi}.'.format(fi=file_name))
+
+
+def download_ensembl_files(sp_latin, version='current',
+                           out_dir=CURRENT_DIR, test=False,
+                           download_files=['genome_fa', 'genome_gtf']):
+    '''Download sequence & annotation files from ensembl dababase'''
+    db_name, db_inf_dict = utils.get_sp_db_inf(sp_latin)
+    host, start_path = db_inf_dict['host'], db_inf_dict['start_path']
+    out_dir = Path(out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    loop = asyncio.get_event_loop()
+
+    version = loop.run_until_complete(
+        utils.get_db_version(
+            host, sp_latin, version,
+            start_path, db_name))
+
+    g_version = loop.run_until_complete(
+        get_inf(host, sp_latin, version,
+                start_path=start_path))
+
+    if test:
+        download_files = ['test_file']
+
+    file_list = list()
+    sp_files = ensembl_file_path(sp_latin, g_version,
+                                 version, start_path=start_path,
+                                 download_files=download_files)
+    print(sp_files)
+    download_tasks = [
+        get_file(host, each_path, out_dir=out_dir) for each_path
+        in sp_files.values()]
+    loop.run_until_complete(asyncio.wait(download_tasks))
+
+    for each_file_type in sp_files:
+        each_file = sp_files[each_file_type]
+        each_file_name = each_file.name
+        each_out_file = out_dir / each_file_name
+        unzip_each_out_file = out_dir / each_out_file.stem
+        uncompress_file(each_out_file, out_dir)
+        each_file_label = each_file_type.split('_')[0]
+        rename_file = '{sp}.{ve}.{tp}{sf}'.format(
+            sp=sp_latin, ve=version,
+            tp=each_file_label, sf=unzip_each_out_file.suffix
+        )
+        rename_file_path = out_dir / rename_file
+        if not rename_file_path.exists():
+            os.symlink(unzip_each_out_file, rename_file_path)
+
+    loop.close()
+
+
+if __name__ == '__main__':
+    fire.Fire(download_ensembl_files)
