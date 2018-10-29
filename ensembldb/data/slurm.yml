@@ -1,0 +1,33 @@
+DEFAULT: &default
+  account: lxgui
+  partition: lc
+  n: 1
+  N: 1
+  x: OM000,OM001,OM013
+
+module_test:
+  TestRun:
+    <<: *default
+    c: 2
+
+module_mkidx:
+  MkindexKallisto:
+    <<: *default
+    c: 4
+  MkindexStar:
+    <<: *default
+    c: 16
+  Mkindex:
+    <<: *default
+    c: 1
+
+module_dlgenome:
+  DlGenomeFormatdb:
+    <<: *default
+    c: 1
+  DlGenomeMetatable:
+    <<: *default
+    c: 1
+  DlGenomeExtSeq:
+    <<: *default
+    c: 2

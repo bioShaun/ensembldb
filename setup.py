@@ -21,9 +21,14 @@ setup(
     license='MIT',
     packages=find_packages(),
     include_package_data=True,
-    scripts=['scripts/ensembldb'],
+    scripts=['scripts/ensembldb',
+             'scripts/ensembldb_genome_dl',
+             'scripts/ensembldb_metatable'],
     install_requires=[
         'click',
+        'luigi',
+        'pyyaml',
+        'envoy'
     ],
 )
 

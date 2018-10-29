@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+
+'''
+get gene-transcript map from gtf file 
+
+'''
+
+import fire
+import gtfparse
+from pathlib import Path
+import pandas as pd
+
+
+def gene2tr(gtf_file):
+    gtf_file = Path(gtf_file)
+    gene2tr_file = gtf_file.with_suffix('.gene2tr')
+    if not gene2tr_file.exists():
+        gtf_df = gtfparse.read_gtf(gtf_file)
+        gene2tr_df = gtf_df.loc[:, ['gene_id',
+                                    'transcript_id']].drop_duplicates()
+        gene2tr_df = gene2tr_df[gene2tr_df.transcript_id != ""]
+        gene2tr_df.to_csv(gene2tr_file, index=False, header=False,
+                          sep='\t')
+
+
+def gtf2genelen(gtf_file):
+    gtf_file = Path(gtf_file)
+    gtf_df = gtfparse.read_gtf(gtf_file)
+    genelen_file = gtf_file.with_suffix('.gene_len')
+    if not genelen_file.exists():
+        gtf_exon_df = gtf_df[gtf_df.feature == 'exon']
+        gtf_exon_df.loc[:, 'exon_len'] = gtf_exon_df.end - \
+            gtf_exon_df.start + 1
+        tr_len = gtf_exon_df.groupby(['transcript_id'])['exon_len'].sum()
+        tr_gene = gtf_exon_df.loc[:, [
+            'transcript_id', 'gene_id']].drop_duplicates()
+        tr_gene = tr_gene.set_index('transcript_id')
+        tr_gene_len = pd.concat([tr_len, tr_gene], axis=1)
+        gene_len = tr_gene_len.groupby(['gene_id'])['exon_len'].median()
+        gene_len.to_csv(genelen_file, header=False, sep='\t')
+
+
+if __name__ == '__main__':
+    fire.Fire({'gene2tr': gene2tr,
+               'gtf2genelen': gtf2genelen})
