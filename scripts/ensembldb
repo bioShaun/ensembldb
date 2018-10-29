@@ -1,8 +1,14 @@
 #! /usr/bin/env python
 
+import luigi
 import click
 import os
 from ensembldb.core import init
+from ensembldb.core import utils
+from ensembldb.core import module_dlgenome
+import sys
+from pathlib import PurePath
+import asyncio
 
 
 @click.group()
@@ -27,6 +33,62 @@ def init_db(db_path):
 @cli.command('show')
 def show_db():
     click.secho('show database')
+
+
+@cli.command('download')
+@click.option(
+    '-d',
+    '--db_dir',
+    help='Database base directroy. Default is the db directroy you init.',
+    default=None,
+    type=click.Path()
+)
+@click.option(
+    '-s',
+    '--sp_latin',
+    help='Species latin name.',
+    type=click.STRING,
+    required=True,
+)
+@click.option(
+    '-v',
+    '--db_version',
+    help='Version of ensembl database to download. Default is [current].',
+    default="current",
+    type=click.STRING
+)
+@click.option(
+    '--slurm',
+    is_flag=True,
+    help='Launch job using slurm.',
+)
+def download(db_dir, sp_latin, db_version, slurm):
+    '''Download and format species ensembl genome/annotation.'''
+    if db_dir is None:
+        try:
+            db_dir = os.environ['ENSEMBL_DB_PATH']
+        except KeyError:
+            print('You must specify a database dir (--db_dir)\
+if you do not init database first.')
+            sys.exit(1)
+    sp_db_dir = PurePath(db_dir) / sp_latin
+    # get ensembl db info
+    db_name, db_inf_dict = utils.get_sp_db_inf(sp_latin)
+    host, start_path = db_inf_dict['host'], db_inf_dict['start_path']
+    loop = asyncio.get_event_loop()
+
+    detail_version = loop.run_until_complete(
+        utils.get_db_version(
+            host, sp_latin, db_version,
+            start_path, db_name))
+    loop.close()
+    print(detail_version)
+
+    dl_module = module_dlgenome.DlGenomeExtSeq(proj_dir=sp_db_dir,
+                                               sp_latin=sp_latin,
+                                               db_version=detail_version,
+                                               slurm=slurm)
+    luigi.build([dl_module])
 
 
 if __name__ == '__main__':

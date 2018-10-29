@@ -35,23 +35,46 @@ load_cfg(ens_db_cfg, ens_db_dict)
 
 
 # ensembl db file path
+# TODO: simplify
 class EnsemblFiles:
 
     def __init__(self, db_path, sp_latin, db_version):
         self.db_path = PurePath(db_path)
         self.sp = sp_latin
         self.db_version = db_version
+        self.anno_path = self.db_path / 'annotation' / self.db_version
 
     @property
     def gtf(self):
         gtf_file = '{t.sp}.{t.db_version}.genome.gtf'.format(
             t=self
         )
-        return self.db_path / 'annotation' / self.db_version / gtf_file
+        return self.anno_path / gtf_file
 
     @property
     def genome_fa(self):
         genome_fa_file = '{t.sp}.{t.db_version}.genome.fa'.format(
             t=self
         )
-        return self.db_path / 'annotation' / self.db_version / genome_fa_file
+        return self.anno_path / genome_fa_file
+
+    @property
+    def transcript_fa(self):
+        tr_fa_file = '{t.sp}.{t.db_version}.transcript.fa'.format(
+            t=self
+        )
+        return self.anno_path / tr_fa_file
+
+    @property
+    def cds_fa(self):
+        file_name = '{t.sp}.{t.db_version}.cds.fa'.format(
+            t=self
+        )
+        return self.anno_path / file_name
+
+    @property
+    def pep_fa(self):
+        file_name = '{t.sp}.{t.db_version}.pep.fa'.format(
+            t=self
+        )
+        return self.anno_path / file_name

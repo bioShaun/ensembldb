@@ -40,6 +40,9 @@ class DlGenomeFormatdb(SimpleTask, Pubvar):
 
     def treat_parameter(self):
         self.proj_dir = Path(self.proj_dir).resolve()
+        self.db_obj = config.EnsemblFiles(self.proj_dir,
+                                          self.sp_latin,
+                                          self.db_version)
         self.anno_dir = config.module_dir[self._module]['annotation']
         self.download_dir = config.module_dir[self._module]['download']
         self.genome_fa = '{sp}.{ve}.genome.fa'.format(
@@ -49,13 +52,14 @@ class DlGenomeFormatdb(SimpleTask, Pubvar):
 
 
 @requires(DlGenomeFormatdb)
-class DlGenomeMetatable(SimpleTask, Pubvar):
+class DlGenomeMetatable(DlGenomeFormatdb):
+    venv = 'web_scraping'
 
-    def treat_parameter(self):
-        self.proj_dir = Path(self.proj_dir).resolve()
-        self.db_obj = config.EnsemblFiles(self.proj_dir,
-                                          self.sp_latin,
-                                          self.db_version)
+
+@requires(DlGenomeMetatable)
+class DlGenomeExtSeq(DlGenomeFormatdb):
+
+    pass
 
 
 if __name__ == '__main__':

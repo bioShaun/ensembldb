@@ -5,12 +5,15 @@ from . import config
 import envoy
 import os
 import time
+import asyncio
+import aioftp
 
 
 def check_slurm_job(job_ids):
     while True:
         running_jobs = set()
-        job_inf = subprocess.check_output('squeue').split('\n')
+        # python2 don not need decode
+        job_inf = subprocess.check_output('squeue').decode().split('\n')
         for each_job in job_inf[1:]:
             if each_job.strip() != '':
                 each_job_id = int(each_job.split()[0])
@@ -103,3 +106,30 @@ workon {t.venv}
             t=self, _dir=config.module_dir[self._module]['logs'],
             name=class_name, tag=tag
         ))
+
+
+def get_sp_db_inf(sp_latin):
+    if sp_latin in config.sp_db_df.index:
+        ens_db_name = config.sp_db_df.loc[sp_latin, 'division']
+    else:
+        ens_db_name = 'Ensembl'
+    return ens_db_name, config.ens_db_dict[ens_db_name]
+
+
+async def get_db_version(host, species, version, start_path='/pub/',
+                         db_name='Ensembl'):
+    if version != 'current':
+        return version
+    else:
+        if db_name == 'Ensembl':
+            path = '{start}/current_fasta/{sp}/cds/'.format(
+                sp=species, start=start_path
+            )
+        else:
+            path = '{start}/{ver}/fasta/{sp}/cds/'.format(
+                ver=version, sp=species, start=start_path
+            )
+        async with aioftp.ClientSession(host) as client:
+            await client.change_directory(path)
+            path_name = await client.get_current_directory()
+            return str(path_name).split('/')[2].split('-')[-1]

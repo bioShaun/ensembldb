@@ -37,8 +37,11 @@ module_cmd:
                        --version {t.db_version}
                        --out-dir {t.dl_dir}'
     DlGenomeFormatdb: 'mkdir -p {t.proj_dir}/{t.anno_dir}/{t.db_version} |
-                       ln -s {t.proj_dir}/{t.download_dir}/{t.genome_fa} {t.proj_dir}/{t.anno_dir}/{t.db_version}/{t.genome_fa} |
-                       ln -s {t.proj_dir}/{t.download_dir}/{t.genome_gtf} {t.proj_dir}/{t.anno_dir}/{t.db_version}/{t.genome_gtf}'
+                       ln -sf {t.proj_dir}/{t.download_dir}/{t.genome_fa} {t.proj_dir}/{t.anno_dir}/{t.db_version}/{t.genome_fa} |
+                       ln -sf {t.proj_dir}/{t.download_dir}/{t.genome_gtf} {t.proj_dir}/{t.anno_dir}/{t.db_version}/{t.genome_gtf}'
 
     DlGenomeMetatable: 'ensembldb_metatable gene2tr {t.db_obj.gtf} |
                         ensembldb_metatable gtf2genelen {t.db_obj.gtf}'
+    DlGenomeExtSeq: 'gffread {t.db_obj.gtf} -g {t.db_obj.genome_fa} -w {t.db_obj.transcript_fa} |
+                     gffread {t.db_obj.gtf} -g {t.db_obj.genome_fa} -x {t.db_obj.cds_fa} |
+                     gffread {t.db_obj.gtf} -g {t.db_obj.genome_fa} -y {t.db_obj.pep_fa} |'
