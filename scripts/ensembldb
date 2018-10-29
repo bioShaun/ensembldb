@@ -82,7 +82,6 @@ if you do not init database first.')
             host, sp_latin, db_version,
             start_path, db_name))
     loop.close()
-    print(detail_version)
 
     dl_module = module_dlgenome.DlGenomeExtSeq(proj_dir=sp_db_dir,
                                                sp_latin=sp_latin,
