@@ -28,7 +28,11 @@ setup(
         'click',
         'luigi',
         'pyyaml',
-        'envoy'
+        'envoy',
+        'pandas',
+        'fire',
+        'gtfparse',
+        'aioftp'
     ],
 )
 

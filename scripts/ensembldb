@@ -7,7 +7,7 @@ from ensembldb.core import init
 from ensembldb.core import utils
 from ensembldb.core import module_dlgenome
 import sys
-from pathlib import PurePath
+from pathlib import PurePath, Path
 import asyncio
 
 
@@ -19,7 +19,7 @@ def cli():
 @cli.command('init')
 @click.option(
     '--db_path',
-    type=click.Path(),
+    type=click.Path(resolve_path=True),
     required=True,
     help='Ensembl database local path.')
 def init_db(db_path):
@@ -41,7 +41,7 @@ def show_db():
     '--db_dir',
     help='Database base directroy. Default is the db directroy you init.',
     default=None,
-    type=click.Path()
+    type=click.Path(resolve_path=True)
 )
 @click.option(
     '-s',
