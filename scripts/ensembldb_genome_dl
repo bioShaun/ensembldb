@@ -29,14 +29,6 @@ def uncompress_file(gzip_file, out_dir):
                     shutil.copyfileobj(f_in, f_out)
 
 
-# def get_sp_db_inf(sp_latin):
-#     if sp_latin in config.sp_db_df.index:
-#         ens_db_name = config.sp_db_df.loc[sp_latin, 'division']
-#     else:
-#         ens_db_name = 'Ensembl'
-#     return ens_db_name, config.ens_db_dict[ens_db_name]
-
-
 def ensembl_file_path(species, g_version, d_version, start_path='/pub/',
                       download_files=None):
     base_path = PurePath('{start}/release-{ver}/'.format(
