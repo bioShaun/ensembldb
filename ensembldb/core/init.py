@@ -6,14 +6,14 @@ import sys
 from prompt_toolkit.validation import Validator
 from prompt_toolkit import prompt
 
-CFG_TEMPLATE = '''
+CFG_TEMPLATE = '''\
 export ENSEMBL_DB_PATH={}
 '''
 
-SHELL_CFG = {
-    'zsh': '.zshrc',
-    'bash': '.bash_profile'
-}
+SHELL_CFG = [
+    '.zshrc',
+    '.bash_profile',
+]
 
 
 SQLIT_TABLE_COL = [
@@ -90,8 +90,10 @@ def setup_db_sqlit(db_path):
 
 
 def shell_cfg_path():
-    sys_shell = Path(os.environ['SHELL']).name
-    return HOME_DIR / SHELL_CFG[sys_shell]
+    for each in HOME_DIR.iterdir():
+        if each.name in SHELL_CFG:
+            return each
+    return HOME_DIR / '.bashrc'
 
 
 def setup_db_env(variable_path):
