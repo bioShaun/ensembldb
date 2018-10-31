@@ -32,7 +32,8 @@ setup(
         'pandas',
         'fire',
         'gtfparse',
-        'aioftp'
+        'aioftp',
+        'prompt_toolkit==2.0.5',
     ],
 )
 
