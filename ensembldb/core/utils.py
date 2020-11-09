@@ -118,6 +118,7 @@ def get_sp_db_inf(sp_latin):
 
 async def get_db_version(host, species, version, start_path='/pub/',
                          db_name='Ensembl'):
+    print(host)
     if version != 'current':
         return version
     else:

@@ -126,7 +126,7 @@ async def get_file(host, path, out_dir=CURRENT_DIR):
 
 def download_ensembl_files(sp_latin, version='current',
                            out_dir=CURRENT_DIR, test=False,
-                           download_files=['genome_fa', 'genome_gtf']):
+                           download_files=['genome_fa', 'genome_gtf', 'pep']):
     '''Download sequence & annotation files from ensembl dababase'''
     db_name, db_inf_dict = utils.get_sp_db_inf(sp_latin)
     host, start_path = db_inf_dict['host'], db_inf_dict['start_path']
