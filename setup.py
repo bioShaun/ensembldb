@@ -28,7 +28,12 @@ setup(
         'click',
         'luigi',
         'pyyaml',
-        'envoy'
+        'envoy',
+        'pandas',
+        'fire',
+        'gtfparse',
+        'aioftp',
+        'prompt_toolkit==2.0.5',
     ],
 )
 

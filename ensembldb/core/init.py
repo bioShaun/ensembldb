@@ -3,17 +3,17 @@ import shutil
 import os
 import sqlite3
 import sys
+from prompt_toolkit.validation import Validator
+from prompt_toolkit import prompt
 
-
-CFG_TEMPLATE = '''
-# ENSEMBL DB ENV
-export ENSEMBL_DB_PATH={variable_path}
+CFG_TEMPLATE = '''\
+export ENSEMBL_DB_PATH={}
 '''
 
-SHELL_CFG = {
-    'zsh': '.zshrc',
-    'bash': '.bash_profile'
-}
+SHELL_CFG = [
+    '.zshrc',
+    '.bash_profile',
+]
 
 
 SQLIT_TABLE_COL = [
@@ -28,6 +28,20 @@ if sys.version_info >= (3, 5):
     HOME_DIR = Path().home()
 else:
     HOME_DIR = Path(os.path.expanduser('~'))
+
+
+def is_right_choice(text):
+    choice = ['y', 'n', 'yes', 'no']
+    return text in choice
+
+
+PROMOT_VAL = Validator.from_callable(
+    is_right_choice,
+    error_message='not legal choice',
+    move_cursor_to_end=True
+)
+
+PROMOT_MSG = 'Reset ENSEMBL_DB_PATH from ({old}) to ({new})? [y/n]:'
 
 
 class EnsSQL:
@@ -76,22 +90,36 @@ def setup_db_sqlit(db_path):
 
 
 def shell_cfg_path():
-    sys_shell = Path(os.environ['SHELL']).name
-    return HOME_DIR / SHELL_CFG[sys_shell]
+    for each in HOME_DIR.iterdir():
+        if each.name in SHELL_CFG:
+            return each
+    return HOME_DIR / '.bashrc'
 
 
 def setup_db_env(variable_path):
     variable_name = 'ENSEMBL_DB_PATH'
     write_flag = 1
     shell_cfg_file = shell_cfg_path()
+    ens_path_cfg = CFG_TEMPLATE.format(variable_path)
     backup_file(shell_cfg_file)
     with open(shell_cfg_file) as cfg_inf:
-        for eachline in cfg_inf:
+        cfg_list = cfg_inf.readlines()
+        cp_cfg_list = cfg_list[:]
+        for n, eachline in enumerate(cp_cfg_list):
             if variable_name in eachline:
                 write_flag = 0
+                old_cfg = eachline.split('ENSEMBL_DB_PATH=')[1].strip()
+                msg = PROMOT_MSG.format(
+                    old=old_cfg, new=variable_path
+                )
+                choice = prompt(
+                    msg, validator=PROMOT_VAL)
+                if choice in ['y', 'yes']:
+                    cfg_list[n] = ens_path_cfg
     if write_flag:
-        with open(shell_cfg_file, 'a') as cfg_inf:
-            cfg_inf.write(CFG_TEMPLATE.format(**locals()))
+        cfg_list.append(ens_path_cfg)
+    with open(shell_cfg_file, 'w') as cfg_inf:
+        cfg_inf.write(''.join(cfg_list))
     if variable_name not in os.environ:
         print('#You need to refresh your environment variables')
         print('#Please run above command before next step:')
